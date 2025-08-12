@@ -1,0 +1,7 @@
+paths:
+  /v1/stats:
+    get:
+      summary: Estadísticas por grupo, periodo, categoría y fase
+      responses:
+        '200':
+          description: Resumen de conteos
