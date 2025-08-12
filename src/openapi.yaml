@@ -1,7 +1,61 @@
+openapi: 3.0.3
+info:
+  title: API Tabla Periódica
+  version: 1.0.0
+  description: API REST para consulta de elementos químicos.
+servers:
+  - url: http://localhost:3000
 paths:
+  /health:
+    get:
+      summary: Comprobar estado
+      responses:
+        '200':
+          description: OK
+  /v1/elements:
+    get:
+      summary: Listar elementos con filtros
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: symbol
+          schema: { type: string }
+        - in: query
+          name: number
+          schema: { type: integer }
+        - in: query
+          name: group
+          schema: { type: integer }
+        - in: query
+          name: period
+          schema: { type: integer }
+        - in: query
+          name: category
+          schema: { type: string }
+        - in: query
+          name: state
+          schema: { type: string, enum: [solid, liquid, gas, unknown] }
+        - in: query
+          name: block
+          schema: { type: string, enum: [s, p, d, f] }
+      responses:
+        '200':
+          description: Lista de elementos
+  /v1/elements/{id}:
+    get:
+      summary: Obtener por número atómico o símbolo
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Elemento }
+        '404': { description: No encontrado }
   /v1/stats:
     get:
       summary: Estadísticas por grupo, periodo, categoría y fase
       responses:
-        '200':
-          description: Resumen de conteos
+        '200': { description: Resumen de conteos }
