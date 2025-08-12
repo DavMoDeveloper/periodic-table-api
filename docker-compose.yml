@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    container_name: periodic-table-api
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      RL_WINDOW_MS: 900000
+      RL_MAX_REQ: 100
+      ALLOWED_ORIGINS: "http://localhost:5173"
+    command: ["node", "src/server.js"]

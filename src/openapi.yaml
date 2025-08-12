@@ -2,60 +2,268 @@ openapi: 3.0.3
 info:
   title: API Tabla Periódica
   version: 1.0.0
-  description: API REST para consulta de elementos químicos.
+  description: >
+    API REST para consultar elementos de la tabla periódica.
+    Incluye filtros, paginación, orden, proyección de campos y estadísticas.
+
 servers:
   - url: http://localhost:3000
+
+tags:
+  - name: Health
+  - name: Elements
+  - name: Stats
+
 paths:
   /health:
     get:
-      summary: Comprobar estado
+      tags: [Health]
+      summary: Comprobar estado de la API
       responses:
-        '200':
+        "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  uptime: { type: number, format: float }
+
   /v1/elements:
     get:
-      summary: Listar elementos con filtros
+      tags: [Elements]
+      summary: Listar elementos con filtros, paginación y orden
       parameters:
-        - in: query
-          name: q
-          schema: { type: string }
-        - in: query
-          name: symbol
-          schema: { type: string }
-        - in: query
-          name: number
-          schema: { type: integer }
-        - in: query
-          name: group
-          schema: { type: integer }
-        - in: query
-          name: period
-          schema: { type: integer }
-        - in: query
-          name: category
-          schema: { type: string }
-        - in: query
-          name: state
-          schema: { type: string, enum: [solid, liquid, gas, unknown] }
-        - in: query
-          name: block
-          schema: { type: string, enum: [s, p, d, f] }
+        - $ref: "#/components/parameters/q"
+        - $ref: "#/components/parameters/symbol"
+        - $ref: "#/components/parameters/number"
+        - $ref: "#/components/parameters/group"
+        - $ref: "#/components/parameters/period"
+        - $ref: "#/components/parameters/category"
+        - $ref: "#/components/parameters/state"
+        - $ref: "#/components/parameters/block"
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/per_page"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/fields"
       responses:
-        '200':
-          description: Lista de elementos
+        "200":
+          description: Lista paginada de elementos
+          headers:
+            X-RateLimit-Limit:
+              description: Límite de solicitudes por ventana
+              schema: { type: integer }
+            X-RateLimit-Remaining:
+              description: Solicitudes restantes en la ventana
+              schema: { type: integer }
+            X-RateLimit-Reset:
+              description: Timestamp (ms) cuando se reinicia la ventana
+              schema: { type: integer }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer, example: 118 }
+                  page: { type: integer, example: 1 }
+                  per_page: { type: integer, example: 20 }
+                  total_pages: { type: integer, example: 6 }
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Element"
+              examples:
+                ejemplo:
+                  value:
+                    count: 118
+                    page: 1
+                    per_page: 10
+                    total_pages: 12
+                    data:
+                      - number: 1
+                        symbol: H
+                        name: Hydrogen
+                        atomic_mass: 1.008
+                        period: 1
+                        group: 1
+                        category: diatomic nonmetal
+                        phase: gas
+                        block: s
+                        summary: The lightest element.
+
   /v1/elements/{id}:
     get:
-      summary: Obtener por número atómico o símbolo
+      tags: [Elements]
+      summary: Obtener un elemento por símbolo o número atómico
       parameters:
-        - in: path
-          name: id
+        - name: id
+          in: path
           required: true
-          schema: { type: string }
+          description: Símbolo (e.g., "Fe") o número atómico (e.g., "26")
+          schema:
+            type: string
       responses:
-        '200': { description: Elemento }
-        '404': { description: No encontrado }
+        "200":
+          description: Elemento encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Element"
+        "404":
+          description: Elemento no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /v1/stats:
     get:
-      summary: Estadísticas por grupo, periodo, categoría y fase
+      tags: [Stats]
+      summary: Estadísticas (conteos por grupo, periodo, categoría y fase)
       responses:
-        '200': { description: Resumen de conteos }
+        "200":
+          description: Resumen de estadísticas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stats"
+
+components:
+  parameters:
+    q:
+      name: q
+      in: query
+      description: Búsqueda de texto (nombre, símbolo, categoría, resumen)
+      schema: { type: string }
+      example: gas
+    symbol:
+      name: symbol
+      in: query
+      description: Símbolo químico exacto (e.g., Na, Fe, O)
+      schema: { type: string }
+      example: Fe
+    number:
+      name: number
+      in: query
+      description: Número atómico
+      schema: { type: integer, minimum: 1, maximum: 118 }
+      example: 8
+    group:
+      name: group
+      in: query
+      description: Grupo (1..18)
+      schema: { type: integer, minimum: 1, maximum: 18 }
+      example: 17
+    period:
+      name: period
+      in: query
+      description: Período (1..7)
+      schema: { type: integer, minimum: 1, maximum: 7 }
+      example: 3
+    category:
+      name: category
+      in: query
+      description: Categoría (e.g., noble gas, transition metal)
+      schema: { type: string }
+      example: noble gas
+    state:
+      name: state
+      in: query
+      description: Fase estándar
+      schema:
+        type: string
+        enum: [solid, liquid, gas, unknown]
+      example: gas
+    block:
+      name: block
+      in: query
+      description: Bloque
+      schema:
+        type: string
+        enum: [s, p, d, f]
+      example: d
+    page:
+      name: page
+      in: query
+      description: Número de página (>= 1)
+      schema: { type: integer, minimum: 1, default: 1 }
+    per_page:
+      name: per_page
+      in: query
+      description: Tamaño de página (1..100)
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    sort:
+      name: sort
+      in: query
+      description: Claves de orden separadas por coma. Usa `-` para descendente (p.ej., `number,-name`)
+      schema: { type: string }
+      example: number,-atomic_mass
+    fields:
+      name: fields
+      in: query
+      description: Lista de campos a devolver, separados por coma (p.ej., `number,symbol,name`)
+      schema: { type: string }
+      example: number,symbol,name,phase
+
+  schemas:
+    Element:
+      type: object
+      properties:
+        number: { type: integer, example: 26 }
+        symbol: { type: string, example: Fe }
+        name: { type: string, example: Iron }
+        atomic_mass: { type: number, nullable: true, example: 55.845 }
+        period: { type: integer, nullable: true, example: 4 }
+        group: { type: integer, nullable: true, example: 8 }
+        category: { type: string, nullable: true, example: transition metal }
+        phase:
+          type: string
+          nullable: true
+          enum: [solid, liquid, gas, unknown]
+          example: solid
+        block:
+          type: string
+          nullable: true
+          enum: [s, p, d, f]
+          example: d
+        summary: { type: string, nullable: true }
+        electronic_configuration: { type: string, nullable: true }
+        electronegativity_pauling: { type: number, nullable: true }
+        density: { type: number, nullable: true }
+        melt: { type: number, nullable: true, description: Kelvin }
+        boil: { type: number, nullable: true, description: Kelvin }
+
+    Stats:
+      type: object
+      properties:
+        total: { type: integer, example: 118 }
+        byGroup:
+          type: object
+          additionalProperties:
+            type: integer
+          example: { "1": 7, "2": 6 }
+        byPeriod:
+          type: object
+          additionalProperties:
+            type: integer
+          example: { "1": 2, "2": 8, "3": 8 }
+        byCategory:
+          type: object
+          additionalProperties:
+            type: integer
+          example: { "noble gas": 6, "transition metal": 38 }
+        byPhase:
+          type: object
+          additionalProperties:
+            type: integer
+          example: { "solid": 94, "liquid": 2, "gas": 11, "unknown": 11 }
+
+    Error:
+      type: object
+      properties:
+        error: { type: string, example: Elemento no encontrado }
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
